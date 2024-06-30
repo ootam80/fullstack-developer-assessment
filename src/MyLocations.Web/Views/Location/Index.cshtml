@@ -1,0 +1,142 @@
+﻿@model MyLocations.Web.Models.IndexViewModel
+
+@{
+    ViewData["Title"] = "My Locations";
+}
+
+<div class="container d-flex justify-content-sm-start flex-wrap align-items-start mb-3">
+    <input type="text" class="form-control w-25 mx-1" id="keyword" placeholder="Keyword" asp-for="@Model.Keyword">
+
+    <a class="btn btn-primary mx-1" id="searchKeyword" asp-controller="Location" asp-action="Index">
+        Search
+    </a>
+
+    <a class="btn btn-secondary mx-1" id="clearKeyword" asp-controller="Location" asp-action="Index" asp-route-keyword="">
+        Clear
+    </a>
+
+</div>
+
+<div class="container d-flex justify-content-sm-start flex-wrap align-items-start mb-3">
+
+    <a class="btn btn-success mx-1" id="searchNew" asp-controller="Location" asp-action="Search">
+        Search for new location
+    </a>
+</div>
+
+<div class="container d-flex justify-content-sm-start flex-wrap align-items-start">
+
+    @foreach (var item in Model.LocationImages)
+    {
+        <div id="@($"{item.LocationId}+{item.ImageId}")" class="px-1 location-image">
+            <div class="card border-primary mb-3" style="width:15em;">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title small text-truncate" style="width:12em">@item.Title</h5>
+                        <p class="card-text small text-truncate" style="width:12em">@item.Description</p>
+                    </div>
+                    <img src="@item.ImageUrl" class="card-img-top" alt="No image available" style="width:14em;height:182px !important;" />
+                </div>
+            </div>
+        </div>
+
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.Keyword) && !Model.LocationImages.Any())
+    {
+        <div class="container">
+            No results found for the given keyword. You can search for a new location.
+        </div>
+    }
+
+    <div class="pt-4 container">
+        <p class="text-danger" id="error"></p>
+    </div>
+
+</div>
+
+<div id="showImageLocationModalBody"></div>
+
+<footer class="border-top footer text-muted">
+    <div class="container">
+        <nav>
+            <ul class="pagination">
+                <li class="page-item @(!Model.LocationImages.HasPreviousPage ? "disabled": "")">
+                    <a class="page-link" asp-controller="Location" asp-action="Index" asp-route-page="@(Model.LocationImages.CurrentPage - 1)">Previous</a>
+                </li>
+
+                @foreach (var item in Model.PagesButtons)
+                {
+                    if (Model.LocationImages.CurrentPage == item.Page)
+                    {
+                        <li class="page-item active" aria-current="page">
+                            <span class="page-link">@(item.Label)</span>
+                        </li>
+                    }
+                    else
+                    {
+                        @if (item.Page.HasValue)
+                        {
+                            <li class="page-item"><a class="page-link" asp-controller="Location" asp-action="Index" asp-route-page="@(item.Page)">@(item.Label)</a></li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled"><a class="page-link">@(item.Label)</a></li>
+                        }
+
+                    }
+                }
+                <li class="page-item @(!Model.LocationImages.HasNextPage ? "disabled": "")">
+                    <a class="page-link" asp-controller="Location" asp-action="Index" asp-route-page="@(Model.LocationImages.CurrentPage + 1)">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</footer>
+
+<script type="text/javascript">
+
+    const search = (searchBtn) => {
+        var searchOriginalHref = searchBtn[0].href;
+        searchBtn.on('click', e => {
+            var keyword = $('#keyword').val();
+            if (keyword && keyword !== "") {
+                e.target.href = searchOriginalHref.concat("?keyword=").concat(keyword);
+            }
+        });
+    };
+
+    $(() => {
+        var searchNew = $('#searchNew');
+        search(searchNew);
+
+        var searchKeyword = $('#searchKeyword');
+        search(searchKeyword);
+
+        $('.location-image').each((index, img) => {
+            img.addEventListener('click', () => {
+                var ids = img.id.split('+');
+                var params = {
+                    locationId: ids[0],
+                    imageId: ids[1]
+                };
+
+                fetch(`Location/ViewLocationImage?${$.param(params)}`, {
+                    method: 'GET'
+                }).then(response => {
+                    if (!response.ok) {
+                        $('#error').text('An unexpected error occurred.');
+                    }
+                    return response.text().then(text => {
+                        $('#showImageLocationModalBody').html(text);
+                        $('#LocationImageModal').modal('show');
+                    });
+                }).catch(error => {
+                    $('#error').text('An unexpected error occurred.');
+                });
+            });
+        });
+
+    });
+
+ </script>

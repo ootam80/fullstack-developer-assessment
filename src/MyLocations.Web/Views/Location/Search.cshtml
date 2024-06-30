@@ -1,0 +1,112 @@
+﻿@model MyLocations.Web.Models.SearchViewModel
+
+<div class="mb-3">
+    <div class="mb-3">
+        <input type="text" class="form-control" id="searchKeyword" placeholder="keyword" value="@Model.Keyword" required>
+    </div>
+
+    <div class="mb-3">
+        <input type="text" class="form-control" id="searchRegion" placeholder="Region" required>
+    </div>
+
+    <select class="mb-3 form-select" aria-label="" id="searchCategory" required>
+        <option selected disabled>Choose a category</option>
+        @foreach (var category in Model.Categories)
+        {
+            <option value="@category.Id">@category.Name</option>
+        }
+    </select>
+
+    <button id="searchNewLocation" class="btn btn-primary">Search</button>
+
+    <a class="btn btn-primary mx-1" id="redirectToLocations" asp-controller="Location" asp-action="Index">
+        Go back to my locations
+    </a>
+
+    <div class="pt-4 container">
+        <p class="text-primary" id="in-progress"></p>
+        <p class="text-danger" id="not-successful"></p>
+        <p class="text-success" id="successful"></p>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+    $(() => {
+        $('#searchNewLocation')[0].addEventListener('click', () => {
+
+            $('#not-successful').text('');
+            $('#successful').text('');
+
+            $('#in-progress').text('Search in progress.');
+
+            var params = {
+                keyword: $('#searchKeyword').val(),
+                region: $('#searchRegion').val(),
+                categoryId: $('#searchCategory').val()
+            };
+
+            if (!params.keyword) {
+                $('#not-successful').text('The keyword is required!');
+                return;
+            } else if (!params.region) {
+                $('#not-successful').text('The region is required!');
+                return;
+            } else if (!params.categoryId) {
+                $('#not-successful').text('The category is required!');
+                return;
+            }
+
+            fetch(`SearchNewLocation?${$.param(params)}`, {
+                method: 'GET'
+            }).then(response => {
+                $('#in-progress').text('');
+                if (!response.ok) {
+                    if (response.status == '404') {
+                        $('#not-successful').text('No location was found. Try again by changing the keyword, region or category.');
+                    }
+                    else {
+                        $('#not-successful').text('An unexpected error occurred.');
+                    }
+                    return;
+                }
+                response.json().then(json => {
+                    uri = 'AddLocation';
+                    fetch(uri, {
+                        method: 'POST',
+                        body: JSON.stringify(json),
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                    }).then(response => {
+                        $('#in-progress').text('');
+                        if (!response.ok) {
+                            response.json().then(e => {
+                                switch (e) {
+                                    case 0:
+                                        $('#not-successful').text('A location already exists with the same search criteria.');
+                                        break;
+                                    case 1:
+                                        $('#not-successful').text('No images were found for the location.');
+                                        break;
+                                    case 2:
+                                        $('#not-successful').text('Images already exists for the same search criteria.');
+                                        break;
+                                }
+                            });
+                            return;
+                        }
+                        $('#successful').text('A location was found and was successfully added.');
+                    }).catch(error => {
+                        $('#in-progress').text('');
+                        $('#not-successful').text('An unexpected error occurred.');
+                    });
+                });
+            }).catch(error => {
+                $('#in-progress').text('');
+                $('#not-successful').text('An unexpected error occurred.');
+            });
+        });
+    });
+
+</script>
